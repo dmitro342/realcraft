@@ -22,7 +22,7 @@ label.nick{display:block;font-weight:600;margin-bottom:6px}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 .btn.alt{background:#3a4f80;color:var(--text);border-bottom-color:#26365a}
 #play{width:100%;padding:14px;font-family:'Press Start 2P',monospace;font-size:13px;margin-bottom:8px}
-#bonus,#fsMenu,#newTab{width:100%;margin-bottom:8px}
+#bonus,#fsMenu{width:100%;margin-bottom:8px}
 #err{color:#ff9d8a;min-height:20px;margin:8px 0 0;font-size:13px}
 dl{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:10px 0 0;font-size:12px;color:var(--mut)}
 dt{color:var(--text);font-weight:600}dd{margin:0}
@@ -95,7 +95,6 @@ body.phone #info{font-size:10px;padding:4px 6px}
 </style>
 </head>
 <body>
-<div id="choice" style="display:none;position:fixed;inset:0;z-index:50;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;background:#10192e;text-align:center"><div style="max-width:420px;width:100%"><h1 style="font-family:'Press Start 2P',monospace;font-size:clamp(20px,5vw,28px);color:#ffcf33;text-shadow:3px 3px 0 #6b4a00;margin:0 0 16px">RealCraft</h1><p style="color:#9fb0d3;line-height:1.5;margin:0 0 20px">Де хочете грати?<br>На повній сторінці гра працює краще й онлайн стабільніший.</p><button class="btn" id="chFull" style="width:100%;padding:16px;font-size:16px;margin-bottom:10px">🖥 Повна сторінка (рекомендовано)</button><button class="btn alt" id="chStay" style="width:100%;padding:16px;font-size:16px">Залишитись тут</button></div></div>
 <div id="menu"><div class="box">
 <h1>REALCRAFT</h1>
 <p class="sub" data-t="sub"></p>
@@ -120,7 +119,8 @@ body.phone #info{font-size:10px;padding:4px 6px}
 <button class="btn" id="play" data-t="play"></button>
 <button class="btn alt" id="bonus"></button>
 <button class="btn alt" id="fsMenu" data-t="fs"></button>
-<button class="btn alt" id="newTab" data-t="newtab"></button>
+<div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn alt" id="expSave" style="flex:1">📤 Код / Code</button><button class="btn alt" id="impSave" style="flex:1">📥 Вставити / Paste</button></div>
+<p id="cloudSt" style="font-size:12px;color:var(--mut);margin:0 0 6px"></p>
 <p id="err" role="alert"></p>
 <dl>
 <dt>WASD / Arrows</dt><dd data-t="k1"></dd>
@@ -712,6 +712,19 @@ function humanoid(c){
   box(.08,.08,.02,0x222222,-.12,1.68,.26);box(.08,.08,.02,0x222222,.12,1.68,.26);
   return g;
 }
+function armorMesh(g,eq){
+  if(g.userData.arm){const o=g.userData.arm;g.remove(o);o.traverse(x=>{if(x.geometry)x.geometry.dispose();if(x.material)x.material.dispose()})}
+  const grp=new THREE.Group();
+  const bx=(w,h,d,col,x,y,z)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshBasicMaterial({color:col}));m.position.set(x,y,z);grp.add(m)};
+  for(let sl=0;sl<4;sl++){
+    const k=eq[sl],m=k&&ARM_META[k];if(!m||m.slot!==sl)continue;
+    if(sl===0){bx(.6,.3,.6,m.c1,0,1.84,0);bx(.62,.07,.62,m.c2,0,1.7,0);bx(.12,.3,.02,m.c3,0,1.84,.31)}
+    else if(sl===1){bx(.62,.72,.36,m.c1,0,1.05,0);bx(.1,.72,.02,m.c3,0,1.05,.19);bx(.26,.3,.26,m.c2,-.38,1.3,0);bx(.26,.3,.26,m.c2,.38,1.3,0);bx(.24,.1,.24,m.c3,-.38,.8,0);bx(.24,.1,.24,m.c3,.38,.8,0)}
+    else if(sl===2){bx(.3,.44,.3,m.c1,-.14,.5,0);bx(.3,.44,.3,m.c1,.14,.5,0);bx(.64,.1,.34,m.c3,0,.78,0)}
+    else{bx(.3,.22,.34,m.c1,-.14,.11,.02);bx(.3,.22,.34,m.c1,.14,.11,.02);bx(.3,.05,.34,m.c2,-.14,.22,.02);bx(.3,.05,.34,m.c2,.14,.22,.02)}
+  }
+  g.add(grp);g.userData.arm=grp;
+}
 const NPCS=[
  {k:'nShop',c:0x2e9fd6,x:-9,z:-1,a:()=>openGm('shop')},
  {k:'nKits',c:0x9b59d6,x:-5,z:-5,a:()=>openGm('kit')},
@@ -808,19 +821,46 @@ function applyEdits(ed){
     if(x>=0&&z>=0&&x<W&&z<D&&y>=0&&y<H&&!prot(x,z,y))world[ix(x,y,z)]=ed[k]}
 }
 function dirty(){dirtyF=true}
+/* ===== ХМАРНІ ЗБЕРЕЖЕННЯ =====
+   Встав сюди адресу своєї Firebase Realtime Database, напр.:
+   const CLOUD='https://realcraft-12345-default-rtdb.europe-west1.firebasedatabase.app';
+   Якщо порожньо — збереження тільки в цьому браузері (+ код переносу). */
+const CLOUD='';
+let cloudT=null,cloudState='';
+async function cloudGet(key){
+  if(!CLOUD)return undefined;
+  try{const r=await fetch(CLOUD.replace(/\/$/,'')+'/saves/'+encodeURIComponent(key)+'.json');if(!r.ok)return undefined;return await r.json()}catch(e){return undefined}
+}
+function cloudPush(now){
+  if(!CLOUD||!ACC)return;
+  const go=()=>{cloudT=null;if(!ACC)return;
+    try{fetch(CLOUD.replace(/\/$/,'')+'/saves/'+encodeURIComponent(ACC.key)+'.json',{method:'PUT',keepalive:true,headers:{'Content-Type':'application/json'},body:JSON.stringify({h:ACC.h,P})}).then(r=>{cloudState=r.ok?'ok':'err';cloudShow()}).catch(()=>{cloudState='err';cloudShow()})}catch(e){}};
+  if(now){clearTimeout(cloudT);go();return}
+  if(!cloudT)cloudT=setTimeout(go,3000);
+}
+function cloudShow(){const e=document.getElementById('cloudSt');if(e)e.textContent=!CLOUD?'💾 '+(['Saved in this browser','Збережено в цьому браузері','Сохранено в этом браузере'][LI]):cloudState==='err'?'⚠ '+(['Cloud error, saved locally','Помилка хмари, збережено локально','Ошибка облака, сохранено локально'][LI]):'☁ '+(['Cloud save on','Хмарне збереження увімкнено','Облачное сохранение включено'][LI])}
 async function saveNow(){
   dirtyF=false;P.t=Date.now();
   if(started)P.pos=[+pos.x.toFixed(1),+pos.y.toFixed(1),+pos.z.toFixed(1)];
   try{localStorage.setItem(ACC?ACC.key:'rc_local_save',JSON.stringify(ACC?{h:ACC.h,P}:P))}catch(e){}
+  cloudPush();cloudShow();
   stat();
 }
-setInterval(()=>{if(dirtyF)saveNow()},6000);
-addEventListener('beforeunload',()=>{saveNow()});
+setInterval(()=>{if(dirtyF)saveNow()},4000);
+addEventListener('beforeunload',()=>{saveNow();cloudPush(true)});
+addEventListener('pagehide',()=>{saveNow();cloudPush(true)});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){saveNow();cloudPush(true)}});
 async function sha(s){try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('rc1:'+s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}catch(e){let h=5381;for(const c of s)h=(h*33^c.charCodeAt(0))>>>0;return'x'+h}}
 async function login(nick,pw){
   const key='rc_acc_'+nick.toLowerCase(),h=await sha(nick.toLowerCase()+'|'+pw);
   if(ACC&&ACC.key===key&&ACC.h===h)return'ok';
   let rec=null;try{rec=JSON.parse(localStorage.getItem(key))}catch(e){}
+  const cr=await cloudGet(key);
+  if(cr&&typeof cr==='object'&&cr.h){
+    if(cr.h!==h)return'bad';
+    if(!rec||rec.h!==h||((cr.P&&cr.P.t)||0)>((rec.P&&rec.P.t)||0))rec=cr;
+    cloudState='ok';
+  }else if(CLOUD&&cr===undefined)cloudState='err';
   if(rec){if(rec.h!==h)return'bad'}else if(pw.length<3)return'short';
   if(ACC)saveNow();
   P=rec?{...JSON.parse(DEF),...rec.P}:JSON.parse(DEF);
@@ -828,6 +868,8 @@ async function login(nick,pw){
   if(P.wv!==7){P.edits={};P.pos=null;P.home=null;P.wv=7}
   if(!Array.isArray(P.eq)||P.eq.length!==4)P.eq=[null,null,null,null];
   gen();applyEdits(P.edits);build();flush(999);started=false;
+  try{localStorage.setItem(key,JSON.stringify({h,P}))}catch(e){}
+  cloudPush(true);cloudShow();
   return rec?'ok':'new';
 }
 function stat(){
@@ -1059,25 +1101,33 @@ $('#play').onclick=async()=>{
   playing=true;syncUI();
   if(!isPhoneMode)requestLock();
 };
-function openFull(){
-  try{const u=URL.createObjectURL(new Blob([SRC],{type:'text/html'}));const w=window.open(u,'_blank');if(!w)toast(tt('popup'))}
-  catch(e){toast(tt('noTab'))}
-}
+$('#expSave').onclick=async()=>{
+  const nk=($('#nick').value||'').trim().slice(0,14);if(ACC)await saveNow();
+  const key='rc_acc_'+nk.toLowerCase();let rec=null;try{rec=localStorage.getItem(key)}catch(e){}
+  if(!rec){$('#err').textContent=['No save for this nick on this device','Для цього ніка немає збереження на цьому пристрої','Для этого ника нет сохранения на этом устройстве'][LI];return}
+  const code=btoa(unescape(encodeURIComponent(JSON.stringify({k:key,r:JSON.parse(rec)}))));
+  try{await navigator.clipboard.writeText(code);$('#err').textContent=['Code copied! Paste it on another device.','Код скопійовано! Встав його на іншому пристрої.','Код скопирован! Вставь его на другом устройстве.'][LI]}
+  catch(e){prompt(['Copy this code:','Скопіюй цей код:','Скопируй этот код:'][LI],code)}
+};
+$('#impSave').onclick=()=>{
+  const code=prompt(['Paste save code:','Встав код збереження:','Вставь код сохранения:'][LI]);if(!code)return;
+  try{const o=JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
+    if(!o||typeof o.k!=='string'||!o.k.startsWith('rc_acc_')||!o.r||typeof o.r.h!=='string'||!o.r.P||typeof o.r.P!=='object')throw 0;
+    localStorage.setItem(o.k,JSON.stringify(o.r));if(ACC&&ACC.key===o.k)ACC=null;
+    $('#nick').value=o.r.P.nick||o.k.slice(7);
+    $('#err').textContent=['Save imported! Enter the password and press PLAY.','Збереження завантажено! Введи пароль і натисни ГРАТИ.','Сохранение загружено! Введи пароль и нажми ИГРАТЬ.'][LI];
+  }catch(e){$('#err').textContent=['Invalid code','Невірний код','Неверный код'][LI]}
+};
 function toggleFS(){
   const d=document.documentElement,fe=document.fullscreenElement||document.webkitFullscreenElement;
   if(fe){(document.exitFullscreen||document.webkitExitFullscreen).call(document);return}
   const f=d.requestFullscreen||d.webkitRequestFullscreen,ok=document.fullscreenEnabled||document.webkitFullscreenEnabled;
-  if(!f||!ok){openFull();return}
-  try{const p=f.call(d);if(p&&p.catch)p.catch(openFull)}catch(e){openFull()}
+  if(!f||!ok)return;
+  try{const p=f.call(d);if(p&&p.catch)p.catch(()=>{})}catch(e){}
 }
 function showTip(){}
-function closeChoice(){$('#choice').style.display='none'}
-$('#chStay').onclick=closeChoice;
-$('#chFull').onclick=()=>{openFull();closeChoice()};
-if(window.self!==window.top)$('#choice').style.display='flex';
 $('#nick').addEventListener('input',()=>{$('#nick').style.borderColor=''});
-$('#fsMenu').onclick=toggleFS;$('#fs-btn').onclick=toggleFS;$('#newTab').onclick=openFull;
-if(window.self===window.top)$('#newTab').style.display='none';
+$('#fsMenu').onclick=toggleFS;$('#fs-btn').onclick=toggleFS;
 const HARD={1:.7,2:.7,3:2,4:1.3,5:.3,6:.6,7:1,8:1.6,9:3,10:4,11:4,12:5,13:2.5,14:.4,15:9,16:2,17:1.5};
 const MULT=[1,.6,.4,.25,.15],TIERN={wpick:1,spick:2,dpick:3,opick:4};
 let holding=false,brk=null,lastSwing=0,lastT=0;
@@ -1378,6 +1428,8 @@ function syncPeers(ch){
       if(e.lb){e.g.remove(e.lb);e.lb.material.map.dispose()}
       const r=RK[rk];e.lb=label((r?'['+rkn(rk)+'] ':'')+nmv,r?r.c:'#ffffff',3.2,.8);e.lb.position.set(0,2.5,0);e.g.add(e.lb);e.n=nmv+rk;e.nm=nmv;
     }
+    const eqv=Array.isArray(d.q)?d.q.slice(0,4).map(k=>typeof k==='string'&&ARM_META[k]?k:''):['','','',''];
+    const sg=eqv.join(',');if(e.as!==sg){e.as=sg;armorMesh(e.g,eqv)}
     e.tx=d.x;e.ty=d.y;e.tz=d.z;e.tw=numOk(d.w,-20,20)?d.w+Math.PI:e.tw;
   }
   for(const[id,e]of RP)if(!alive.has(id)){scene.remove(e.g);RP.delete(id);if(netReady)sysChat(tt('left',e.nm||'?'))}
@@ -1390,10 +1442,10 @@ function netTick(now,dt){
     let da=e.tw-g.rotation.y;da=Math.atan2(Math.sin(da),Math.cos(da));g.rotation.y+=da*k;
   }
   if(!room||now-netT<100)return;netT=now;
-  const s=(playing?[1,P.nick,P.rank,+pos.x.toFixed(2),+pos.y.toFixed(2),+pos.z.toFixed(2),+yaw.toFixed(2)]:[0,P.nick,P.rank]).join('|')+'#'+bseq+'#'+cseq;
+  const s=(playing?[1,P.nick,P.rank,+pos.x.toFixed(2),+pos.y.toFixed(2),+pos.z.toFixed(2),+yaw.toFixed(2)]:[0,P.nick,P.rank]).join('|')+'#'+bseq+'#'+cseq+'#'+(P.eq||[]).join(',');
   if(s===lastPres)return;lastPres=s;
   const o=playing?{on:1,n:P.nick,r:P.rank,x:+pos.x.toFixed(2),y:+pos.y.toFixed(2),z:+pos.z.toFixed(2),w:+yaw.toFixed(2)}:{on:0,n:P.nick,r:P.rank};
-  o.b=bring;o.c=cring;
+  o.b=bring;o.c=cring;o.q=(P.eq||[]).map(k=>k||'');
   room.presence(o).catch(()=>{});
 }
 function netSetup(r){
@@ -1586,7 +1638,7 @@ function setLang(l){
   document.querySelectorAll('[data-t]').forEach(e=>e.textContent=tt(e.dataset.t));
   $('#chatin input').placeholder=tt('chatPh');
   $('#langSel').value=l;
-  refreshLabels();hotbar();stat();
+  refreshLabels();hotbar();stat();cloudShow();
   if(ui==='gm')renderGm();if(ui==='case')renderCase();
 }
 $('#langSel').onchange=e=>setLang(e.target.value);
