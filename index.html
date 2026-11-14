@@ -193,7 +193,7 @@ kPl:['Phone','Телефон','Телефон'],
 kPh:['joystick — move, drag — look, hold — break, tap — place/hit','джойстик — рух, палець — огляд, тримай — ламати, тап — поставити/удар','джойстик — движение, палец — обзор, держи — ломать, тап — поставить/удар'],
 chatPh:['Message or /spawn /village /rtp /time','Повідомлення або /spawn /village /rtp /time','Сообщение или /spawn /village /rtp /time'],
 lock:['🎯 MOUSE LOOK (ESC - exit)','🎯 ОГЛЯД МИШЕЮ (ESC - вихід)','🎯 ОБЗОР МЫШЬЮ (ESC - выход)'],
-cases:['DONATE CASES','ДОНАТ-КЕЙСИ','ДОНАТ-КЕЙСЫ'],close:['Close','Закрити','Закрыть'],
+cases:['CASES','КЕЙСИ','КЕЙСЫ'],close:['Close','Закрити','Закрыть'],
 dead:['You died','Ти загинув','Ты погиб'],deadsub:['Half of your resources were lost.','Половину ресурсів втрачено.','Половина ресурсов потеряна.'],respawn:['Respawn','Відродитись','Возродиться'],
 rank:['Rank','Ранг','Ранг'],coins:['Coins','Монети','Монеты'],blocks:['Blocks','Блоки','Блоки'],noRank:['player','гравець','игрок'],
 coinsW:['coins','монет','монет'],coinsN:['{0} coins','{0} монет','{0} монет'],rankN:['Rank {0}','Ранг {0}','Ранг {0}'],
@@ -222,6 +222,11 @@ nShop:['Shop','Магазин','Магазин'],nKits:['Kits & Donate','Наб�
 chest:['Chest','Скриня','Сундук'],villager:['Villager','Житель села','Житель деревни'],
 gift:['Take two apples, traveler!','Тримай два яблука, мандрівнику!','Держи два яблока, путник!'],
 pass:['Password','Пароль','Пароль'],
+compN:['Rank already owned: +{0} coins','Ранг вже є: +{0} монет','Ранг уже есть: +{0} монет'],
+freeCase:['Open free ({0})','Відкрити безкоштовно ({0})','Открыть бесплатно ({0})'],
+plusCase:['+1 donate case!','+1 донат-кейс!','+1 донат-кейс!'],
+qDonate:['+ donate case','+ донат-кейс','+ донат-кейс'],
+freeLeft:['Free donate cases','Безкоштовні донат-кейси','Бесплатные донат-кейсы'],
 connecting:['Connecting to the server…','Підключення до сервера…','Подключение к серверу…'],
 expSave:['📤 Export save code','📤 Експорт коду збереження','📤 Экспорт кода сохранения'],
 impSave:['📥 Import save code','📥 Імпорт коду збереження','📥 Импорт кода сохранения'],
@@ -316,7 +321,7 @@ function equipArmor(k){
   add(k,-1);
   if(prev)add(prev,1);
   P.eq[m.slot]=k;
-  toast(tt('armEq',nm(k)));
+  toast(tt('armEq',nm(k)));qp('equip');
   saveNow();stat();
   return true;
 }
@@ -801,7 +806,7 @@ const VIL=VILS.map(([col,h,ph],i)=>{
 function talk(v,i){
   let m=p3(v.ph[Math.random()*v.ph.length|0]);
   if(i===0&&Date.now()-(P.vf|0)>3e5){P.vf=Date.now();add('apple',2);m=tt('gift')}
-  m=tt('villager')+': '+m;sysChat(m);toast(m);
+  m=tt('villager')+': '+m;qp('talk');sysChat(m);toast(m);
 }
 function villTick(now,dt){
   for(const v of VIL){
@@ -815,7 +820,7 @@ function villTick(now,dt){
   }
   const t=Date.now();for(const c of CHESTS)c.g.visible=!(P.ch&&P.ch[c.id]&&t-P.ch[c.id]<CHT);
 }
-let P={nick:'Steve',coins:300,owned:[],rank:0,edits:{},cases:0,bonus:0,pos:null,t:0,hp:20,inv:{},eq:[null,null,null,null],home:null,q:{},qd:{},kit:{},wv:7};
+let P={nick:'Steve',coins:300,owned:[],rank:0,edits:{},cases:0,dc:0,bonus:0,pos:null,t:0,hp:20,inv:{},eq:[null,null,null,null],home:null,q:{},qd:{},kit:{},wv:7};
 const DEF=JSON.stringify(P);let ACC=null;
 let started=false,online=1,dirtyF=false,room=null;
 const edKey=(x,y,z)=>x+','+y+','+z;
@@ -884,7 +889,7 @@ function stat(){
   const left=20*3600e3-(Date.now()-P.bonus);
   $('#bonus').disabled=left>0;
   $('#bonus').textContent=left>0?tt('bonus',Math.ceil(left/3600e3)):tt('bonusGet');
-  $('#cc').textContent=P.coins+' '+tt('coinsW');
+  $('#cc').textContent=P.coins+' '+tt('coinsW')+((P.dc|0)>0?' · 🎁 '+P.dc:'');
   const hc=Math.ceil(P.hp/2);
   $('#mini-hearts').textContent='♥'.repeat(Math.max(0,hc))+'♡'.repeat(Math.max(0,10-hc));
   $('#mini-coins').textContent='🪙 '+P.coins+(armor()?'  🛡 '+armor():'');
@@ -964,7 +969,7 @@ function hit(px,py,pz){
   return false;
 }
 function spawn(){pos.set(CX+.5,SY+1.05,CZ-6.5);yaw=Math.PI;pitch=0;vy=0}
-function toVillage(){pos.set(VX+.5,VG+1.05,VZ+3.5);vy=0;yaw=Math.PI;toast(tt('tpVil'))}
+function toVillage(){qp('village');pos.set(VX+.5,VG+1.05,VZ+3.5);vy=0;yaw=Math.PI;toast(tt('tpVil'))}
 let lastPortal=0;
 function update(dt){
   const fx=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)+mobMove.y;
@@ -996,35 +1001,36 @@ function ray(){
 const Cn=v=>({k:'c',v,lf:()=>tt('coinsN',v),r:v>=1000?3:v>=300?1:0});
 const Bk=(v,r,q=8)=>({k:'b',v,q,lf:()=>q+'× '+nm(v),r});
 const Rk=v=>({k:'r',v,lf:()=>tt('rankN',rkn(v)),r:v>=8?3:v>=6?2:v>=5?1:v>=3?3:v});
+const Kt=v=>({k:'k',v,lf:()=>tt('kitGot',p3(KITS[v][0])),r:v>=5?3:v>=3?2:v>=1?1:0});
 const CASES=[
- {n:['Common','Звичайний','Обычный'],p:100,col:'#9fb0d3',t:[[Cn(60),40],[Cn(150),25],[Bk(9,1,12),15],[Bk(12,1,8),10],[Rk(1),7],[Bk(10,2,6),3]]},
- {n:['Rare','Рідкісний','Редкий'],p:400,col:'#4aa3ff',t:[[Cn(200),30],[Cn(500),20],[Bk(10,1,12),20],[Bk(11,2,10),15],[Rk(2),10],[Rk(3),5]]},
- {n:['Donate','Донат','Донат'],p:600,col:'#ff5ec4',t:[[Cn(300),25],[Rk(5),28],[Rk(6),22],[Rk(7),13],[Rk(8),7],[Rk(9),4],[Rk(10),1]]},
- {n:['Legendary','Легендарний','Легендарный'],p:1500,col:'#ffcf33',t:[[Cn(1000),30],[Bk(11,2,20),20],[Rk(3),25],[Rk(4),15],[Cn(5000),10]]}
+ {n:['Coins & Resources','Монети та ресурси','Монеты и ресурсы'],p:1000,col:'#4aa3ff',t:[[Cn(500),26],[Cn(1000),22],[Cn(2000),10],[Cn(5000),3],[Bk(9,1,16),12],[Bk(10,2,10),10],[Bk(11,2,10),8],[Bk(12,2,10),6],[Bk(10,3,24),3]]},
+ {n:['Kits','Набори','Наборы'],p:3000,col:'#b86bff',t:[[Kt(1),26],[Kt(2),24],[Kt(3),20],[Kt(4),14],[Kt(5),11],[Kt(6),5]]},
+ {n:['Donate','Донат','Донат'],p:10000,col:'#ff5ec4',d:1,t:[[Rk(5),30],[Rk(6),25],[Rk(7),20],[Rk(8),13],[Rk(9),8],[Rk(10),4]]}
 ];
-[0,1,2,5].forEach((k,i)=>CASES[i].kit=k);
 const roll=c=>{const s=c.t.reduce((a,b)=>a+b[1],0);let x=Math.random()*s;for(const[p,w]of c.t){if((x-=w)<0)return p}return c.t[0][0]};
 function award(p){
   if(p.k==='c'){P.coins+=p.v;return tt('won',p.lf())}
   if(p.k==='b'){add(p.v,p.q||8);if(!P.owned.includes(p.v))P.owned.push(p.v);return tt('newBlock',p.lf())}
+  if(p.k==='k'){const kk=KITS[p.v];for(const x in kk[3])add(x,kk[3][x]);return tt('kitGot',p3(kk[0]))}
   if(p.v>P.rank){P.rank=p.v;return tt('newRank',rkn(p.v))}
-  P.coins+=100;return tt('comp');
+  const cp=(RK[p.v].p||150)*2;P.coins+=cp;return tt('compN',cp);
 }
 const RC=['#9fb0d3','#4aa3ff','#b86bff','#ffcf33'];
 let busy=false;
 function renderCase(){
   stat();
   $('#cards').innerHTML=CASES.map((c,i)=>{const s=c.t.reduce((a,b)=>a+b[1],0);
-    return `<div class="cc" style="border-color:${c.col}"><h3 style="color:${c.col}">${p3(c.n)}</h3><b>${c.p} ${tt('coinsW')}</b><ul>${c.t.map(([p,w])=>`<li style="color:${RC[p.r]}">${p.lf()}: ${Math.round(w/s*100)}%</li>`).join('')}<li style="color:#9fe870">+ ${tt('kitGot',p3(KITS[c.kit][0]))}</li></ul><button class="btn" data-i="${i}" ${busy||P.coins<c.p?'disabled':''}>${tt('open')}</button></div>`}).join('');
-  document.querySelectorAll('#cards button').forEach(b=>b.onclick=()=>openCrate(+b.dataset.i));
+    const fr=c.d&&(P.dc|0)>0?`<button class="btn" data-i="${i}" data-f="1" style="margin-top:6px;background:#ff5ec4;border-bottom-color:#a52d80" ${busy?'disabled':''}>🎁 ${tt('freeCase',P.dc|0)}</button>`:'';
+    return `<div class="cc" style="border-color:${c.col}"><h3 style="color:${c.col}">${p3(c.n)}</h3><b>${c.p} ${tt('coinsW')}</b><ul>${c.t.map(([p,w])=>`<li style="color:${RC[p.r]}">${p.lf()}: ${Math.round(w/s*100)}%</li>`).join('')}</ul><button class="btn" data-i="${i}" ${busy||P.coins<c.p?'disabled':''}>${tt('open')}</button>${fr}</div>`}).join('');
+  document.querySelectorAll('#cards button').forEach(b=>b.onclick=()=>openCrate(+b.dataset.i,b.dataset.f==='1'));
 }
-function openCrate(i){
-  const c=CASES[i];if(busy||P.coins<c.p)return;
-  busy=true;P.coins-=c.p;P.cases++;
+function openCrate(i,free){
+  const c=CASES[i];if(busy)return;
+  if(free){if(!c.d||(P.dc|0)<=0)return;P.dc--}
+  else{if(P.coins<c.p)return;P.coins-=c.p}
+  busy=true;P.cases++;
   const prize=roll(c);let msg=award(prize);
-  let ki=c.kit;if(prize.k==='r'&&prize.v>=5)ki=Math.max(ki,prize.v-4);
-  const kk=KITS[ki];for(const x in kk[3])add(x,kk[3][x]);
-  msg+=' + '+tt('kitGot',p3(kk[0]));
+  if(c.d)qp('dcase');
   qp('case');saveNow();renderCase();
   const WIN=36,items=[];for(let k=0;k<44;k++)items.push(k===WIN?prize:roll(c));
   const strip=$('#strip'),reel=$('#reel');
@@ -1170,7 +1176,7 @@ function placeAction(){
   world[ix(x,y,z)]=id;
   if(hit(pos.x,pos.y,pos.z)){world[ix(x,y,z)]=0;return}
   add(id,-1);
-  mark(x,z);edit(x,y,z,id);
+  mark(x,z);edit(x,y,z,id);qp('place');
 }
 let isPointerLocked=false,isMouseDragging=false,lastX=0,lastY=0;
 function requestLock(){try{const p=cv.requestPointerLock&&cv.requestPointerLock();if(p&&p.catch)p.catch(()=>{})}catch(e){}}
@@ -1291,11 +1297,42 @@ const QS=[
  [['Buy from the shop','Купи в магазині','Купи в магазине'],'buy',1,60],
  [['Open 3 village chests','Відкрий 3 скрині в селі','Открой 3 сундука в деревне'],'chest',3,120]
 ];
+
+const QX=[
+['log','Chop logs: {0}','Зрубай колод: {0}','Руби брёвна: {0}',[[50,150],[150,300],[400,600]]],
+['stone','Mine stone: {0}','Добудь каменю: {0}','Добудь камня: {0}',[[60,150],[200,350],[500,700]]],
+['mine','Break blocks: {0}','Зламай блоків: {0}','Сломай блоков: {0}',[[50,100],[200,250],[600,500],[1500,1000],[4000,2000]]],
+['dirt','Dig dirt: {0}','Накопай землі: {0}','Накопай земли: {0}',[[30,80],[100,200],[300,400]]],
+['leaves','Break leaves: {0}','Зламай листя: {0}','Сломай листву: {0}',[[20,60],[80,150]]],
+['sand','Dig sand: {0}','Накопай піску: {0}','Накопай песка: {0}',[[20,70],[100,200]]],
+['ore','Mine ores (gold, diamond, emerald): {0}','Добудь руд (золото, діамант, смарагд): {0}','Добудь руд (золото, алмаз, изумруд): {0}',[[10,300],[30,700],[80,1500]]],
+['gold','Mine gold: {0}','Добудь золота: {0}','Добудь золота: {0}',[[3,150],[10,350],[30,800]]],
+['diamond','Mine diamonds: {0}','Добудь діамантів: {0}','Добудь алмазов: {0}',[[1,200],[5,500],[15,1200]]],
+['emerald','Mine emeralds: {0}','Добудь смарагдів: {0}','Добудь изумрудов: {0}',[[1,200],[5,500],[15,1200]]],
+['obsid','Mine obsidian: {0}','Добудь обсидіану: {0}','Добудь обсидиана: {0}',[[1,300],[5,700],[15,1500]]],
+['craft','Craft items: {0}','Скрафти предметів: {0}','Скрафти предметов: {0}',[[10,150],[30,400],[80,900]]],
+['kill','Kill zombies: {0}','Вбий зомбі: {0}','Убей зомби: {0}',[[15,300],[40,700],[100,1800]]],
+['case','Open cases: {0}','Відкрий кейсів: {0}','Открой кейсов: {0}',[[3,200],[10,600],[25,1500]]],
+['dcase','Open donate cases: {0}','Відкрий донат-кейсів: {0}','Открой донат-кейсов: {0}',[[1,500],[3,1500],[10,5000]]],
+['chest','Open village chests: {0}','Відкрий скринь у селі: {0}','Открой сундуков в деревне: {0}',[[10,300],[25,800]]],
+['rtp','Use /rtp: {0} times','Використай /rtp разів: {0}','Используй /rtp раз: {0}',[[5,100],[20,300]]],
+['buy','Buy from the shop: {0}','Купи в магазині: {0}','Купи в магазине: {0}',[[5,120],[20,400],[50,1000]]],
+['sell','Sell ore: {0}','Продай руди: {0}','Продай руды: {0}',[[1,60],[10,250],[40,800]]],
+['kit','Buy kits: {0}','Купи наборів: {0}','Купи наборов: {0}',[[1,100],[3,400]]],
+['place','Place blocks: {0}','Постав блоків: {0}','Поставь блоков: {0}',[[20,80],[100,250],[500,600],[2000,1500]]],
+['equip','Equip armor pieces: {0}','Одягни частин броні: {0}','Надень частей брони: {0}',[[1,100],[5,300],[20,800]]],
+['talk','Talk to villagers: {0}','Поговори з жителями: {0}','Поговори с жителями: {0}',[[1,50],[10,200],[30,500]]],
+['village','Visit the village: {0} times','Відвідай село разів: {0}','Посети деревню раз: {0}',[[1,60],[5,200]]],
+['eat','Eat food: {0}','З’їж їжі: {0}','Съешь еды: {0}',[[1,50],[10,200],[30,500]]]
+];
+(()=>{const g=[];for(const [k,en,uk,ru,tiers] of QX)for(const [n,rw] of tiers)g.push([[en.replace('{0}',n),uk.replace('{0}',n),ru.replace('{0}',n)],k,n,rw]);
+ g.sort((a,b)=>a[3]-b[3]);for(const q of g)QS.push(q)})();
 const inv=k=>P.inv[k]|0;
 const txt=o=>Object.entries(o).map(([k,n])=>n+' '+nm(k)).join(', '),can=o=>Object.entries(o).every(([k,n])=>inv(k)>=n);
 function add(k,n){P.inv[k]=inv(k)+n;if(P.inv[k]<=0)delete P.inv[k];dirty();hotbar()}
 function qp(k,n=1){const b=P.q[k]|0;P.q[k]=b+n;QS.forEach((q,i)=>{if(q[1]===k&&b<q[2]&&b+n>=q[2])toast(tt('quest',p3(q[0])))});dirty()}
-function drop(b){if(b===1)add(2,1);else if(b===5){if(Math.random()<.2)add('apple',1)}else if(b!==13&&b<14)add(b,1);
+function drop(b){qp('mine');if(b===1||b===2)qp('dirt');if(b===5)qp('leaves');if(b===6)qp('sand');if(b===9)qp('gold');if(b===10)qp('diamond');if(b===11)qp('emerald');if(b===12)qp('obsid');
+  if(b===1)add(2,1);else if(b===5){if(Math.random()<.2)add('apple',1)}else if(b!==13&&b<14)add(b,1);
   if(b===4)qp('log');if(b===3)qp('stone');if(b>=9&&b<=11)qp('ore')}
 let lastRtp=0;
 function rtp(){
@@ -1338,14 +1375,14 @@ const act={tp:k=>{closeGm();if(k==='spawn'){spawn();toast(tt('tpSpawn'))}else if
   mv:i=>{i=+i;const s=P.sl;if(held===null){if(s[i]!==null)held=i}else{[s[held],s[i]]=[s[i],s[held]];held=null;hotbar()}},
   eq:k=>{equipArmor(k)},
   uneq:idx=>{unequipArmor(+idx)},
-  eat:k=>{if(inv(k)&&P.hp<20){add(k,-1);P.hp=Math.min(20,P.hp+FOOD[k]);stat()}},
+  eat:k=>{if(inv(k)&&P.hp<20){add(k,-1);qp('eat');P.hp=Math.min(20,P.hp+FOOD[k]);stat()}},
   craft:i=>{const r=CR[i];if(!can(r[2]))return;for(const k in r[2])add(k,-r[2][k]);add(r[0],r[1]);qp('craft')},
   buy:i=>{const s=SH[i];if(P.coins<s[2])return;P.coins-=s[2];add(s[0],s[1]);qp('buy');saveNow();stat()},
-  sell:k=>{if(!inv(k))return;add(k,-1);P.coins+=SELL[k];saveNow();stat()},
-  kit:i=>{const k=KITS[i];if(P.coins<k[2])return;P.coins-=k[2];for(const x in k[3])add(x,k[3][x]);toast(tt('kitGot',p3(k[0])));saveNow();stat()},
+  sell:k=>{if(!inv(k))return;add(k,-1);P.coins+=SELL[k];qp('sell');saveNow();stat()},
+  kit:i=>{const k=KITS[i];if(P.coins<k[2])return;P.coins-=k[2];qp('kit');for(const x in k[3])add(x,k[3][x]);toast(tt('kitGot',p3(k[0])));saveNow();stat()},
   buyrank:i=>{i=+i;const r=RK[i];if(!r||P.coins<r.p||P.rank===i)return;P.coins-=r.p;P.rank=i;toast(tt('rankBought',rkn(i)));saveNow();stat()},
   buyblock:i=>{i=+i;const prices={9:150,10:300,11:220,12:260};const pr=prices[i]||200;if(P.coins<pr)return;P.coins-=pr;add(i,8);if(!P.owned.includes(i))P.owned.push(i);toast(tt('newBlock','8× '+nm(i)));saveNow();stat()},
-  qc:i=>{const q=QS[i];if(P.qd[i]||(P.q[q[1]]|0)<q[2])return;P.qd[i]=1;P.coins+=q[3];toast(tt('plusCoins',q[3]));saveNow();stat()}
+  qc:i=>{const q=QS[i];if(P.qd[i]||(P.q[q[1]]|0)<q[2])return;P.qd[i]=1;P.coins+=q[3];P.dc=(P.dc|0)+1;toast(tt('plusCoins',q[3])+' · '+tt('plusCase'));saveNow();stat()}
 };
 $('#gb').onclick=$('#tabs').onclick=e=>{const b=e.target.closest('[data-a]');if(!b||b.disabled)return;act[b.dataset.a](b.dataset.i);if(ui==='gm')renderGm()};
 function renderGm(){
@@ -1382,7 +1419,8 @@ function renderGm(){
       return Rw(`<i class="ic" style="background-image:url(${itemIcon(bi)})"></i><b>${nm(bi)} ×8</b>`,pr+' '+cw,B('buyblock',bi,pr+' '+cw,P.coins<pr));
     }).join('');
   }else{
-    h+=QS.map((q,i)=>{const n=Math.min(P.q[q[1]]|0,q[2]);return Rw(p3(q[0]),`${n}/${q[2]} · ${q[3]} ${cw}`,P.qd[i]?'✓':B('qc',i,tt('claim'),n<q[2]))}).join('');
+    const st=i=>P.qd[i]?2:((P.q[QS[i][1]]|0)>=QS[i][2]?0:1);
+    h+=QS.map((q,i)=>i).sort((a,b)=>st(a)-st(b)||a-b).map(i=>{const q=QS[i];const n=Math.min(P.q[q[1]]|0,q[2]);return Rw(p3(q[0]),`${n}/${q[2]} · ${q[3]} ${cw} ${tt('qDonate')}`,P.qd[i]?'✓':B('qc',i,tt('claim'),n<q[2]))}).join('');
   }
   $('#gb').innerHTML=h;
 }
