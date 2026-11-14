@@ -119,7 +119,7 @@ body.phone #info{font-size:10px;padding:4px 6px}
 <button class="btn" id="play" data-t="play"></button>
 <button class="btn alt" id="bonus"></button>
 <button class="btn alt" id="fsMenu" data-t="fs"></button>
-<div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn alt" id="expSave" style="flex:1">📤 Код / Code</button><button class="btn alt" id="impSave" style="flex:1">📥 Вставити / Paste</button></div>
+<div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn alt" id="expSave" style="flex:1" data-t="expSave"></button><button class="btn alt" id="impSave" style="flex:1" data-t="impSave"></button></div>
 <p id="cloudSt" style="font-size:12px;color:var(--mut);margin:0 0 6px"></p>
 <p id="err" role="alert"></p>
 <dl>
@@ -167,7 +167,7 @@ const SRC='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
 const $=s=>document.querySelector(s);
 /* ===== I18N: [English, Українська, Русский] — English is the default ===== */
 const LK={en:0,uk:1,ru:2};
-let curLang='uk',LI=1;
+let curLang='en',LI=0;
 try{const sl=localStorage.getItem('rc_lang');if(sl&&LK[sl]!==undefined){curLang=sl;LI=LK[sl]}}catch(e){}
 const S={
 sub:['Online survival server: cloud spawn, village, cases, day/night & zombies.','Онлайн-сервер виживання: хмарний спавн, село, кейси, день/ніч та зомбі!','Онлайн-сервер выживания: облачный спавн, деревня, кейсы, день/ночь и зомби!'],
@@ -200,7 +200,7 @@ coinsW:['coins','монет','монет'],coinsN:['{0} coins','{0} монет',
 won:['Won {0}','Виграно {0}','Выиграно {0}'],newBlock:['New block: +{0}','Новий блок: +{0}','Новый блок: +{0}'],
 dupBlock:['{0} (+40 coins)','{0} (+40 монет)','{0} (+40 монет)'],newRank:['New rank: {0}','Новий ранг: {0}','Новый ранг: {0}'],
 comp:['Compensation: 100 coins','Компенсація 100 монет','Компенсация 100 монет'],open:['Open','Відкрити','Открыть'],
-tInv:['Inventory','Інвентар','Инвентарь'],tShop:['Shop','Магазин','Магазин'],tKit:['Kits & Donate','Кіти та Донат','Киты и Донат'],tQ:['Quests','Квести','Квесты'],
+tInv:['Inventory','Інвентар','Инвентарь'],tShop:['Shop','Магазин','Магазин'],tKit:['Kits & Donate','Набори та донат','Наборы и донат'],tQ:['Quests','Квести','Квесты'],
 health:['Health','Здоров’я','Здоровье'],bSpawn:['☁ Spawn','☁ Спавн','☁ Спавн'],bVil:['🏘 Village','🏘 Село','🏘 Деревня'],bRtp:['🎲 RTP','🎲 RTP','🎲 RTP'],
 items:['Items','Предмети','Предметы'],invEmpty:['Inventory is empty','Інвентар порожній','Инвентарь пуст'],craftH:['Crafting','Крафт предметів','Крафт предметов'],craft:['Craft','Скрафтити','Скрафтить'],
 buyH:['Buy resources','Купити ресурси','Купить ресурсы'],buy:['Buy','Купити','Купить'],sellH:['Sell ore','Продати руду','Продать руду'],sell:['Sell','Продати','Продать'],have:['have {0}','є {0}','есть {0}'],claim:['Claim','Забрати','Забрать'],
@@ -208,9 +208,9 @@ tpSpawn:['Teleported to spawn','Телепорт на спавн','Телепо�
 needHome:['Use /sethome first','Спочатку /sethome','Сначала /sethome'],homeSet:['Home set','Дім встановлено','Дом установлен'],
 cmds:['Commands: /spawn /village /rtp /sethome /home /time','Команди: /spawn /village /rtp /sethome /home /time','Команды: /spawn /village /rtp /sethome /home /time'],
 wait:['Wait {0}s','Чекай {0}с','Жди {0}с'],noPlace:['No place found','Не знайшов місце','Не нашёл место'],rtpAt:['RTP: X {0} Z {1}','RTP: X {0} Z {1}','RTP: X {0} Z {1}'],
-flyVip:['Flying requires VIP rank','Політ з рангу VIP','Полёт с ранга VIP'],safe:['Spawn is protected','Спавн захищений','Спавн защищён'],
+flyVip:['Flying requires VIP rank','Політ доступний з рангу VIP','Полёт доступен с ранга VIP'],safe:['Spawn is protected','Спавн захищений','Спавн защищён'],
 needPick:['Hold a better pickaxe','Потрібна кирка вищого рівня в руці','Нужна кирка получше в руке'],noBlock:['Out of this block!','Цей блок закінчився!','Этот блок закончился!'],
-edLimit:['Save limit reached','Ліміт збережень вичерпано','Лимит сохранений исчерпан'],noFs:['Fullscreen unavailable','Повний екран недоступний','Полный экран недоступен'],
+edLimit:['Build limit reached','Досягнуто ліміту змін світу','Достигнут лимит изменений мира'],noFs:['Fullscreen unavailable','Повний екран недоступний','Полный экран недоступен'],
 popup:['Allow pop-ups for this site','Дозволь спливаючі вікна для сайту','Разреши всплывающие окна для сайта'],noTab:['Could not open a new tab','Не вдалося відкрити нову вкладку','Не удалось открыть новую вкладку'],
 quest:['Quest complete: {0}','Квест виконано: {0}','Квест выполнен: {0}'],plusCoins:['+{0} coins','+{0} монет','+{0} монет'],
 chestEmpty:['Chest is empty · again in {0} min','Скриня порожня · знову через {0} хв','Сундук пуст · снова через {0} мин'],chestGot:['Chest: {0}','Скриня: {0}','Сундук: {0}'],
@@ -218,15 +218,18 @@ nickTaken:['The name “{0}” is taken. Change your nick and press Play again!'
 pickDef:['Pickaxe','Кирка','Кирка'],swordDef:['Sword','Меч','Меч'],
 lblCases:['DONATE CASES: right click the chest','ДОНАТ-КЕЙСИ: ПКМ по скрині','ДОНАТ-КЕЙСЫ: ПКМ по сундуку'],lblSafe:['Protected spawn','Спавн захищений','Спавн защищён'],
 lblPortal:['RTP PORTAL','ПОРТАЛ RTP','ПОРТАЛ RTP'],lblVil:['VILLAGE','СЕЛО','ДЕРЕВНЯ'],
-nShop:['Shop','Магазин','Магазин'],nKits:['Kits & Donate','Кіти / Донат','Киты / Донат'],nQuests:['Quests','Квести','Квесты'],nRtp:['RTP','RTP','RTP'],nCases:['Cases','Кейси','Кейсы'],nVil:['Village','Село','Деревня'],
+nShop:['Shop','Магазин','Магазин'],nKits:['Kits & Donate','Набори / Донат','Наборы / Донат'],nQuests:['Quests','Квести','Квесты'],nRtp:['RTP','RTP','RTP'],nCases:['Cases','Кейси','Кейсы'],nVil:['Village','Село','Деревня'],
 chest:['Chest','Скриня','Сундук'],villager:['Villager','Житель села','Житель деревни'],
 gift:['Take two apples, traveler!','Тримай два яблука, мандрівнику!','Держи два яблока, путник!'],
 pass:['Password','Пароль','Пароль'],
+connecting:['Connecting to the server…','Підключення до сервера…','Подключение к серверу…'],
+expSave:['📤 Export save code','📤 Експорт коду збереження','📤 Экспорт кода сохранения'],
+impSave:['📥 Import save code','📥 Імпорт коду збереження','📥 Импорт кода сохранения'],
 badPass:['Wrong password for this nick','Невірний пароль для цього ніка','Неверный пароль для этого ника'],
 shortPass:['New account: set a password (3+ characters)','Новий акаунт: придумай пароль (від 3 символів)','Новый акаунт: придумай пароль (от 3 символов)'],
 newAcc:['Account “{0}” created','Акаунт «{0}» створено','Аккаунт «{0}» создан'],
 welcomeBack:['Welcome back, {0}!','З поверненням, {0}!','С возвращением, {0}!'],
-kitGot:['Kit: {0}','Кіт: {0}','Кит: {0}'],
+kitGot:['Kit: {0}','Набір: {0}','Набор: {0}'],
 armorH:['Equipped Armor (click to unequip, RMB in hand to equip)','Одягнена броня (клік — зняти, ПКМ у руці — одягти)','Надетая броня (клик — снять, ПКМ в руке — надеть)'],
 armEq:['Equipped: {0}','Одягнено: {0}','Надето: {0}'],
 armUneq:['Unequipped: {0}','Знято: {0}','Снято: {0}'],
@@ -237,7 +240,7 @@ dayRise:['☀ Dawn has arrived! Zombies are burning!','☀ Настав світ
 zombieKill:['Zombie defeated! +25 coins','Зомбі переможено! +25 монет','Зомби побеждён! +25 монет'],
 donRanks:['Buy Donate Ranks (from cases)','Купити донат-привілеї (з кейсів)','Купить донат-привилегии (из кейсов)'],
 donBlocks:['Buy Rare Blocks (from cases)','Купити рідкісні блоки (з кейсів)','Купить редкие блоки (из кейсов)'],
-kitsH:['Donate & Rank Kits (100% available to buy!)','Донат-кіти (усі доступні для покупки!)','Донат-киты (все доступны для покупки!)'],
+kitsH:['Donate & Rank Kits (all available to buy!)','Донат-набори (усі доступні для купівлі!)','Донат-наборы (все доступны для покупки!)'],
 owned:['Owned ✓','Куплено ✓','Куплено ✓'],
 rankBought:['Purchased rank: {0}!','Куплено привілей: {0}!','Куплена привилегия: {0}!']
 };
@@ -1080,7 +1083,7 @@ $('#play').onclick=async()=>{
   const wanted=($('#nick').value||'Steve').trim().slice(0,14)||'Steve';
   const btn=$('#play');
   if(room&&!room.connected()){
-    $('#err').textContent='Підключення до сервера…';btn.disabled=true;
+    $('#err').textContent=tt('connecting');btn.disabled=true;
     for(let i=0;i<15&&!room.connected();i++)await new Promise(r=>setTimeout(r,150));
     btn.disabled=false;$('#err').textContent='';
   }
